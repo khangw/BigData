@@ -1,10 +1,21 @@
-version: '3'
 
 services:
+  spark-submit-app:
+    build:
+      context: .
+      dockerfile: Dockerfile
+    environment:
+      - SPARK_APPLICATION_PYTHON_LOCATION=/app/main.py
+    volumes:
+      - ./big_data/src:/app
+    depends_on:
+      - spark-master
+      - spark-worker-1
+      - spark-worker-2
+
   namenode:
     image: bde2020/hadoop-namenode:2.0.0-hadoop3.2.1-java8
     container_name: namenode
-    hostname: namenode
     ports:
       - 9870:9870
       - 9000:9000
@@ -12,90 +23,76 @@ services:
       - CLUSTER_NAME=stock
     env_file:
       - ./hadoop/hadoop.env
-    deploy:
-      mode: replicated
-      replicas: 1
-      restart_policy:
-        condition: on-failure
     volumes:
-      - ../storage/hadoop/namenode:/hadoop/dfs/name
-    networks:
-      - es-net
+      - ./hadoop/namenode:/hadoop/dfs/name
+      - D:/bigdata_btl/big_data/Data:/data
 
   datanode-1:
     image: bde2020/hadoop-datanode:2.0.0-hadoop3.2.1-java8
     container_name: datanode-1
-    hostname: datanode-1
     ports:
-      - 9864:9864
-    environment:
-      - SERVICE_PRECONDITION=namenode:9870
+      - 50075:50075
     env_file:
       - ./hadoop/hadoop.env
-    deploy:
-      mode: global
-      restart_policy:
-        condition: on-failure
     volumes:
-    - ../storage/hadoop/datanode-1:/hadoop/dfs/data
-    networks:
-      - es-net
-  datanode-2:
-    image: bde2020/hadoop-datanode:2.0.0-hadoop3.2.1-java8
-    container_name: datanode-2
-    hostname: datanode-2
-    ports:
-      - 50075:9864
-    environment:
-      - SERVICE_PRECONDITION=namenode:9870
-    env_file:
-      - ./hadoop/hadoop.env
-    deploy:
-      mode: global
-      restart_policy:
-        condition: on-failure
-    volumes:
-    - ../storage/hadoop/datanode-2:/hadoop/dfs/data
-    networks:
-      - es-net
-  datanode-3:
-    image: bde2020/hadoop-datanode:2.0.0-hadoop3.2.1-java8
-    container_name: datanode-3
-    hostname: datanode-3
-    ports:
-      - 29864:9864
-    environment:
-      - SERVICE_PRECONDITION=namenode:9870
-    env_file:
-      - ./hadoop/hadoop.env
-    deploy:
-      mode: global
-      restart_policy:
-        condition: on-failure
-    volumes:
-    - ../storage/hadoop/datanode-3:/hadoop/dfs/data
-    networks:
-      - es-net
-  resourcemanager:
-    image: bde2020/hadoop-resourcemanager:2.0.0-hadoop3.2.1-java8
-    container_name: resourcemanager
-    restart: always
-    environment:
-      SERVICE_PRECONDITION: "namenode:9000 namenode:9870 datanode:9864"
-    env_file:
-      - ./hadoop/hadoop.env
-    networks:
-      - es-net
-  nodemanager1:
-    image: bde2020/hadoop-nodemanager:2.0.0-hadoop3.2.1-java8
-    container_name: nodemanager
-    restart: always
-    environment:
-      SERVICE_PRECONDITION: "namenode:9000 namenode:9870 datanode:9864 resourcemanager:8088"
-    env_file:
-      - ./hadoop/hadoop.env
-    networks:
-      - es-net
+    - ./hadoop/datanode-1:/hadoop/dfs/data
+    - D:/bigdata_btl/big_data/Data:/data
+#  datanode-2:
+#    image: bde2020/hadoop-datanode:2.0.0-hadoop3.2.1-java8
+#    container_name: datanode-2
+#    hostname: datanode-2
+#    ports:
+#      - 50075:9864
+#    environment:
+#      - SERVICE_PRECONDITION=namenode:9870
+#    env_file:
+#      - ./hadoop/hadoop.env
+#    deploy:
+#      mode: global
+#      restart_policy:
+#        condition: on-failure
+#    volumes:
+#    - ../storage/hadoop/datanode-2:/hadoop/dfs/data
+#    networks:
+#      - es-net
+#  datanode-3:
+#    image: bde2020/hadoop-datanode:2.0.0-hadoop3.2.1-java8
+#    container_name: datanode-3
+#    hostname: datanode-3
+#    ports:
+#      - 29864:9864
+#    environment:
+#      - SERVICE_PRECONDITION=namenode:9870
+#    env_file:
+#      - ./hadoop/hadoop.env
+#    deploy:
+#      mode: global
+#      restart_policy:
+#        condition: on-failure
+#    volumes:
+#    - ../storage/hadoop/datanode-3:/hadoop/dfs/data
+#    networks:
+#      - es-net
+#  resourcemanager:
+#    image: bde2020/hadoop-resourcemanager:2.0.0-hadoop3.2.1-java8
+#    container_name: resourcemanager
+#    restart: always
+#    environment:
+#      SERVICE_PRECONDITION: "namenode:9000 namenode:9870 datanode:9864"
+#    env_file:
+#      - ./hadoop/hadoop.env
+#    networks:
+#      - es-net
+#  nodemanager1:
+#    image: bde2020/hadoop-nodemanager:2.0.0-hadoop3.2.1-java8
+#    container_name: nodemanager
+#    restart: always
+#    environment:
+#      SERVICE_PRECONDITION: "namenode:9000 namenode:9870 datanode:9864 resourcemanager:8088"
+#    env_file:
+#      - ./hadoop/hadoop.env
+#    networks:
+#      - es-net
   
   # historyserver:
   #   image: bde2020/hadoop-historyserver:2.0.0-hadoop3.2.1-java8
@@ -124,56 +121,56 @@ services:
   spark-master:
     image: bde2020/spark-master:3.0.0-hadoop3.2
     container_name: spark-master
-    depends_on:
-      - namenode
-      - datanode-1
-      - datanode-2
-      - datanode-3
+
     ports:
       - "8080:8080"
       - "7077:7077"
     environment:
       - INIT_DAEMON_STEP=setup_spark
-      - CORE_CONF_fs_defaultFS=hdfs://namenode:9000
-    networks:
-      - es-net
 
-  spark-worker:
+  spark-worker-1:
     image: bde2020/spark-worker:3.0.0-hadoop3.2
-    container_name: spark-worker
+    container_name: spark-worker-1
     depends_on:
       - spark-master
     ports:
       - "8081:8081"
     environment:
       - "SPARK_MASTER=spark://spark-master:7077"
-      - CORE_CONF_fs_defaultFS=hdfs://namenode:9000
-    networks:
-      - es-net
 
-  elasticsearch:
-    image: docker.elastic.co/elasticsearch/elasticsearch:7.15.1
-    container_name: elasticsearch
-    volumes:
-      - ../storage/esdata:/usr/share/elasticsearch/data
+  spark-worker-2:
+    image: bde2020/spark-worker:3.0.0-hadoop3.2
+    container_name: spark-worker-2
+    depends_on:
+      - spark-master
     ports:
-      - 9200:9200
-      - 9300:9300
+      - "8082:8081"
     environment:
-      - xpack.security.enabled=false
-      - "discovery.type=single-node"
-    networks:
-      - es-net
-  kibana:
-    image: docker.elastic.co/kibana/kibana:7.15.1
-    container_name: kibana
-    ports:
-      - 5601:5601
-    environment:
-      ELASTICSEARCH_URL: http://elasticsearch:9200
-      ELASTICSEARCH_HOSTS: '["http://elasticsearch:9200"]'
-    networks:
-      - es-net
+      - "SPARK_MASTER=spark://spark-master:7077"
+#
+#  elasticsearch:
+#    image: docker.elastic.co/elasticsearch/elasticsearch:7.15.1
+#    container_name: elasticsearch
+#    volumes:
+#      - ../storage/esdata:/usr/share/elasticsearch/data
+#    ports:
+#      - 9200:9200
+#      - 9300:9300
+#    environment:
+#      - xpack.security.enabled=false
+#      - "discovery.type=single-node"
+#    networks:
+#      - es-net
+#  kibana:
+#    image: docker.elastic.co/kibana/kibana:7.15.1
+#    container_name: kibana
+#    ports:
+#      - 5601:5601
+#    environment:
+#      ELASTICSEARCH_URL: http://elasticsearch:9200
+#      ELASTICSEARCH_HOSTS: '["http://elasticsearch:9200"]'
+#    networks:
+#      - es-net
 networks:
   es-net:
     driver: bridge

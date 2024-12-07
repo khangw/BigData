@@ -1,4 +1,4 @@
-jm import json
+import json
 from pyspark.sql import DataFrame
 
 def save_dataframes_to_hdfs(path,config,data_dfs,target_file_names):

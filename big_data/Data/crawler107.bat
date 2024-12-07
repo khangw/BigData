@@ -27,7 +27,7 @@ python crawler.py 125 129 &
 python crawler.py 130 134 &
 python crawler.py 135 139 &
 python crawler.py 140 144 &
-python crawler.py 145 149&
+python crawler.py 145 149 &
 python crawler.py 150 154 &
 python crawler.py 155 159 &
 python crawler.py 160 164 &

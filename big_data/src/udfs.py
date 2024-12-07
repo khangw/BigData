@@ -189,3 +189,59 @@ def normalize_salary(quyen_loi):
         if sal_bins!= None and sal_bins!=[]:
             bin_set = bin_set.union(tuple(sal_bins))
     return sorted(list(bin_set))
+
+
+# Data Film
+@udf(returnType=IntegerType())
+def extract_type(type):
+    return 1 if type == "Phim bộ" else 0
+
+@udf(returnType=IntegerType())
+def extract_release_year(nam_phat_hanh):
+    match = re.search(r"\d{4}", nam_phat_hanh)
+    if match:
+        return int(match.group())
+    return None  # Nếu không tìm thấy năm, trả về None
+
+@udf(returnType=IntegerType())
+def extract_status(trang_thai, so_tap):
+    match = re.search(r"\d+", trang_thai)
+    if match:
+        int_status = int(match.group())
+        if int_status < so_tap:
+            return int(match.group())
+    return None
+
+@udf(returnType=IntegerType())
+def extract_episode_count(so_tap):
+    match = re.search(r"\d+", so_tap)
+    if match:
+        return int(match.group())
+    return None  # Nếu không tìm thấy số, trả về None
+
+@udf(returnType=StringType())
+def map_condition(tinh_trang):
+    return patterns.status_film.get(tinh_trang, "Unknown")  # Trả về "Unknown" nếu trạng thái không xác định
+
+@udf(returnType=ArrayType(StringType()))
+def extract_genres(the_loai):
+    return [genre.strip() for genre in the_loai.split(",")]
+
+@udf(returnType=StringType())
+def map_director(dao_dien):
+    if dao_dien == "Đang cập nhật":
+        return "Updating"
+    return dao_dien.strip()
+
+@udf(returnType=ArrayType(StringType()))
+def extract_actors(dien_vien):
+    if dien_vien == "Đang cập nhật":
+        return "Updating"
+    return [actor.strip() for actor in dien_vien.split(",")]
+
+@udf(returnType=FloatType())
+def extract_rating(danh_gia):
+    try:
+        return float(danh_gia)
+    except ValueError:
+        return None  # Trả về None nếu không thể chuyển đổi được

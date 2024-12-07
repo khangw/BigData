@@ -1,4 +1,5 @@
 import requests
+import re
 from bs4 import BeautifulSoup
 
 convertName = {
@@ -10,36 +11,50 @@ convertName = {
     "Diễn viên": "actor"
 }
 
-link_film = 'https://phimmoichill.biz/info/ma-sieu-quay-pm16192'
+link_film = 'https://motphim.ad/phim/vu-an-bo-ngo-ai-da-giet-jonbenet-ramsey'
 headers = {'User-Agent': 'Mozilla/5.0'}
 response = requests.get(link_film, headers=headers)
 print(response.status_code)
 if response.status_code == 200:
     soup = BeautifulSoup(response.content, "html.parser")
-    body = soup.find('ul', class_='block-film')
-    data = {}
+    film_data = {}
 
-    # Tìm tất cả các thẻ <li> trong ul
-    for li in soup.find_all('li'):
-        # Tìm thẻ <label> trong mỗi <li>
-        label = li.find('label')
-        if label:
-            # Lấy tên thuộc tính là văn bản của <label>
-            label_name = label.text.strip().replace(":", "")
+    info = soup.find('div', class_='info-block')
+    if info:
+        h6_list = info.findAll('h6')
+        for h6 in h6_list:
+            # Lấy label
+            print(h6)
+            label_name = h6.text.strip().replace("\n", "").split(":")[0].strip()
 
-            # Lấy giá trị sau <label>, có thể là text hoặc trong thẻ <span>, <a>, v.v.
+            # Lấy value
             value = None
-            # Tìm các thẻ con như <span>, <a> trong mỗi <li>
-            if li.find('span'):
-                value = li.find('span').text.strip()
-            elif li.find('a'):
-                value = ', '.join([a.text for a in li.find_all('a')])
-            elif li.find(string=True):
-                value = li.findAll(string=True)[-1]
+            if h6.find('span'):  # Nếu có span bên trong
+                value = h6.find('span').text.strip()
+            elif h6.find('a'):  # Nếu có liên kết (a)
+                value = ', '.join([a.text.strip() for a in h6.find_all('a')])
+            else:
+                if '(' in h6.text.strip():
+                    value = h6.text.strip().split('(')[-1].split(')')[0]  # Tách ra số năm nằm giữa dấu ngoặc
+                    label_name = 'Năm phát hành'
+                else:
+                    value = h6.text.strip().replace("\n", "").split(":", 1)[-1].strip()
 
-            # Lưu cặp key-value vào từ điển
-            if value:
-                data[label_name] = value
-    print(data)
+            value = re.sub(r'\s+', ' ', value)
+            # Lưu vào dictionary
+            if label_name and value:
+                film_data[label_name] = value
+
+    movie_show_time = soup.find('div', class_='myui-player__notice')
+    if movie_show_time:
+        content_film = movie_show_time.text.strip().split(':')
+        film_data['content'] = content_film[-1]
+
+    div_star = soup.find('div', {'id': 'star'})
+    if div_star:
+        rate_score = div_star.get('data-score')
+        film_data['rate_score'] = rate_score
+
+    print(film_data)
 else:
-    print("Failed to retrieve the page.")
+    print(f"Failed to retrieve the page for {link_film}.")

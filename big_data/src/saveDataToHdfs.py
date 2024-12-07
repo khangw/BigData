@@ -1,7 +1,7 @@
 from hdfs import InsecureClient
 import os
 
-hdfs_url = 'http://localhost:9870'
+hdfs_url = 'http://172.19.0.3:9870'
 client = InsecureClient(hdfs_url)
 
 # Đường dẫn đến thư mục chứa các tệp JSON trên hệ thống cục bộ
