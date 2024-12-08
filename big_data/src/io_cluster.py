@@ -18,28 +18,21 @@ def save_dataframes_to_hdfs(path,config,data_dfs,target_file_names):
         print("Processing dataframe of type ",type(data_df))
         data_df.write.format("json").mode("overwrite").save(config.get_hdfs_namenode()+"/"+path+"/"+target_file_name)
 
-def save_dataframes_to_elasticsearch(dataframes,indices,es_write_config):
-    """
-       Helper function to save PySpark DataFrames to elasticsearch cluster
 
-       Parameters
-       ----------
-
-       dataframes: list of all PySpark DataFrames
-       indices: list of elasticsearch indices
-       es_write_config: dict of elasticsearch write config
-    """
-
-    for dataframe,index in zip(dataframes,indices):
-        print("Processing index:",index)
+def save_dataframes_to_elasticsearch(dataframes, indices, es_write_config):
+    for dataframe, index in zip(dataframes, indices):
+        print(f"Processing index: {index}")
 
         es_write_config['es.resource'] = index
+        try:
+            rdd_ = dataframe.rdd
+            rdd_.map(lambda row: (None, json.dumps(row.asDict()))) \
+                .saveAsNewAPIHadoopFile(path='-', 
+                                        outputFormatClass="org.elasticsearch.hadoop.mr.EsOutputFormat", 
+                                        keyClass="org.apache.hadoop.io.NullWritable", 
+                                        valueClass="org.elasticsearch.hadoop.mr.LinkedMapWritable", 
+                                        conf=es_write_config)
+            print(f"Successfully saved data to {index}")
+        except Exception as e:
+            print(f"Error saving data to {index}: {e}")
 
-        rdd_ = dataframe.rdd
-        rdd_.map(lambda row: (None, \
-                              json.dumps(row.asDict()))) \
-                              .saveAsNewAPIHadoopFile(path='-', \
-                              outputFormatClass="org.elasticsearch.hadoop.mr.EsOutputFormat", \
-                              keyClass="org.apache.hadoop.io.NullWritable", \
-                              valueClass="org.elasticsearch.hadoop.mr.LinkedMapWritable", \
-                              conf=es_write_config)

@@ -22,8 +22,8 @@ def write_file(filename, data, delimiter):
 
 
 def get_list_link(start_page: int, end_page: int) -> List[str]:
-    list_phim_bo = [f"https://motphim.ad/danh-sach/phim-bo?page={page}/" for page in range(start_page, end_page + 1)]
-    list_phim_le = [f"https://motphim.ad/danh-sach/phim-le?page={page}/" for page in range(start_page, end_page//4+1)]
+    list_phim_bo = [f"https://motphim.ad/danh-sach/phim-bo?page={page}" for page in range(start_page, end_page + 1)]
+    list_phim_le = [f"https://motphim.ad/danh-sach/phim-le?page={page}" for page in range(start_page, end_page//4+1)]
     return list_phim_bo + list_phim_le
 
 
@@ -128,6 +128,7 @@ if __name__ == "__main__":
     print(f"Start crawling from page {args.startPage} to {args.endPage} ...")
 
     links = get_list_link(args.startPage, args.endPage)
+    print(links)
     header_film_list = get_header_film_list(links)
     data_film_list = get_full_data_films(header_film_list)
 

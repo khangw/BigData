@@ -1,4 +1,4 @@
-FROM bde2020/spark-master:3.0.0-hadoop3.2
+FROM bde2020/spark-submit:3.3.0-hadoop3.3
 
 LABEL maintainer="Your Name <your.email@example.com>"
 
@@ -8,6 +8,8 @@ RUN #rm /submit.sh
 COPY ./submit.sh /
 
 # Copy only the requirements file to /app
+#COPY /big_data/src/runspark.sh  /
+
 COPY /big_data/src/requirements.txt  /app/
 
 # Install dependencies (if needed)
@@ -17,9 +19,7 @@ COPY ./runspark.sh /
 
 
 # Copy all files from ./app in local to /app in container
-COPY /big_data/src /app
-
-
+COPY ./big_data/src /app
 
 # Set the working directory to /app
 WORKDIR /app

@@ -27,10 +27,10 @@ class Config:
     def initialize_spark_session(self, appName):
         if self.spark_app == None:
             self.spark_app = (SparkSession
-                              .builder.master("spark://8da7829252c2:7077")
+                              .builder.master("spark://215fd78bebaa:7077")
                               .appName(appName)
-                              # .config("spark.jars","elasticsearch-hadoop-7.17.5.jar")
-                              .config("spark.driver.extraClassPath", "elasticsearch-hadoop-7.17.5.jar")
+                              # .config("spark.jars", "elasticsearch-hadoop-7.17.5.jar")
+                              # .config("spark.driver.extraClassPath", "elasticsearch-hadoop-7.17.5.jar")
                               .config("spark.es.nodes", self.elasticsearch_conf["es.nodes"])
                               .config("spark.es.port", self.elasticsearch_conf["es.port"])
                               .config("spark.es.nodes.wan.only", "true")
