@@ -8,8 +8,9 @@ from pyspark.sql import functions as F
 from operator import add
 import sys, os
 from pyspark.sql.types import *
+from itertools import combinations
 
-import patterns, udfs, queries, config, io_cluster
+import udfs, config, io_cluster
 
 schema = StructType([
     StructField("name", StringType(), True),
@@ -24,6 +25,13 @@ schema = StructType([
     StructField("Diễn viên", StringType(), True),
     StructField("Đánh giá", StringType(), True)
 ])
+
+def generate_actor_pairs(actor_list):
+    if actor_list is None:
+        return []
+    return [f"{pair[0]} & {pair[1]}" for pair in combinations(actor_list, 2)]
+
+generate_actor_pairs_udf = udf(generate_actor_pairs, ArrayType(StringType()))
 
 if __name__ == "__main__":
     APP_NAME = "PreprocessData"
@@ -113,15 +121,74 @@ if __name__ == "__main__":
         .orderBy(desc("Số lượng phim"))
     )
     rating_film_count_df.show(5)
+    # 6.  Phân phối số lượng tập phim (binning)
+    episode_distribution_df = (
+        extracted_recruit_df
+        .withColumn("EpisodeBin", F.floor(col("EpisodeCount") / 10) * 10)
+        .groupBy("EpisodeBin")
+        .agg(count("FilmName").alias("FilmCount"))
+        .orderBy("EpisodeBin")
+    )
+    episode_distribution_df.show(5)
 
-    # 6. Lưu các dataframe vào Elasticsearch
+    # 7. Thống kê phim có nhiều tập nhất trongg từng năm
+    most_episodes_per_year_df = (
+        extracted_recruit_df
+        .groupBy("ReleaseYear")
+        .agg(
+            max("EpisodeCount").alias("MaxEpisodes"),
+            F.first("FilmName").alias("FilmWithMostEpisodes")
+        )
+        .orderBy("ReleaseYear")
+    )
+    most_episodes_per_year_df.show(5)
+    # 8. Trung bình số lượng phim phát hành mỗi năm theo thể loại
+    average_film_per_genre_df = (
+        extracted_recruit_df
+        .withColumn("Genres", explode(col("Genres")))
+        .groupBy("Genres")
+        .agg(
+            (count("FilmName") / countDistinct("ReleaseYear")).alias("AvgFilmsPerYear")
+        )
+        .orderBy(desc("AvgFilmsPerYear"))
+    )
+    average_film_per_genre_df.show(5)
+    # 9. Xác định các cặp diễn viên thường xuyên xuất hiện cùng nhau
+    actor_pair_df = (
+        extracted_recruit_df
+        .withColumn("ActorPairs", generate_actor_pairs_udf(col("Actors")))
+        .withColumn("ActorPairs", explode(col("ActorPairs")))
+        .filter(col("ActorPairs").isNotNull())
+        .groupBy("ActorPairs")
+        .agg(count("*").alias("Appearances"))
+        .orderBy(desc("Appearances"))
+    )
+
+    actor_pair_df.show(5)
+    # 10. Tìm các đạo diễn có sự đa dạng thể loại cao nhất
+    director_genre_diversity_df = (
+        extracted_recruit_df
+        .withColumn("Genres", explode(col("Genres")))
+        .groupBy("Director")
+        .agg(countDistinct("Genres").alias("GenreDiversity"))
+        .orderBy(desc("GenreDiversity"))
+    )
+    director_genre_diversity_df.show(5)
+
+
+    # 11. Lưu các dataframe vào Elasticsearch
     df_to_elasticsearch = (
         extracted_recruit_df,
         yearly_film_count_df,
         genre_film_count_df,
         type_film_count_df,
         actor_film_count_df,
-        rating_film_count_df
+        rating_film_count_df,
+        episode_distribution_df,
+        most_episodes_per_year_df,
+        average_film_per_genre_df,
+        actor_pair_df,
+        director_genre_diversity_df,
     )
 
     df_es_indices = (
@@ -130,7 +197,12 @@ if __name__ == "__main__":
         "genre_film_counts",
         "type_film_counts",
         "actor_film_counts",
-        "rating_film_counts"
+        "rating_film_counts",
+        "episode_distribution",
+        "most_episodes_per_year",
+        "average_film_per_genre",
+        "actor_pair",
+        "director_genre_diversity",
     )
 
     # Lưu vào Elasticsearch
